@@ -1,2 +1,13 @@
 # btc-fullnode-stack
-Docker-based Bitcoin full node stack for Synology with Fulcrum, ckpool-solo, Mempool, and optional mining support.
+
+This repository will contain a Synology-optimized Docker setup for:
+
+- Bitcoin Core
+- Fulcrum
+- ckpool-solo
+- Mempool (Explorer)
+
+Currently work-in-progress. Check back later for full setup instructions.
+
+## Structure
+
