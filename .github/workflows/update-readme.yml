@@ -5,6 +5,9 @@ on:
     paths:
       - "**/README.md"
 
+permissions:
+  contents: write
+
 jobs:
   call-update:
     uses: magicdude4eva/common-repo-workflow/.github/workflows/update-donations.yml@main
