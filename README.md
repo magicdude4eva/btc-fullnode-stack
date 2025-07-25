@@ -13,3 +13,4 @@ Currently work-in-progress. Check back later for full setup instructions.
 
 ## Structure
 
+## Donations are always welcome
