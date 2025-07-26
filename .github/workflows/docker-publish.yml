@@ -52,6 +52,9 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
+      - name: 🐞 Debug extracted short-description
+        run: echo "Short desc: ${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.description'] }}"
+        
       - name: 📢 Publish README to Docker Hub
         uses: peter-evans/dockerhub-description@v4
         with:
@@ -59,4 +62,4 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           repository: ${{ env.IMAGE_NAMESPACE }}/btc-${{ matrix.component }}
           readme-filepath: ./${{ matrix.component }}/README.md
-          short-description: ${{ steps.meta.outputs.labels['org.opencontainers.image.description'] }}
+          short-description: short-description: ${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.description'] }}
