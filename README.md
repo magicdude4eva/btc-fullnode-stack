@@ -237,6 +237,35 @@ Both services use credentials defined in your .env file. By default: Username: a
 Once running, you can access the Grafana dashboard at: `http://<your-server-ip>:3000`
 <img width="70%" alt="image" src="https://github.com/user-attachments/assets/886e664e-66b9-4144-9439-3c2db82c9e05" />
 
+## 🛠️ Setting Up the NerdQAxe Miner
+Once your backend services (Bitcoin node, CKSolo, InfluxDB, Grafana, and CKStats) are up and running, it’s time to connect your NerdQAxe miner.
+
+### 1. Configure Primary Stratum Pool
+Head to your NerdQAxe web UI and set the **Primary Stratum Pool** to connect to your local CKSolo instance:
+
+- **Stratum Host**: `192.168.1.97`  
+  *(replace with the IP of your Docker host)*
+- **Stratum Port**: `3333`
+- **Stratum User**: Your full mining address and worker name (e.g., `bc1...nerdqaxe01`)
+- **Stratum Password**: leave as is or set a placeholder like `x`
+
+> ⚠️ Don't include `stratum+tcp://` or the port in the host field. The host should be a raw IP or hostname only.
+<img width="1738" height="704" alt="image" src="https://github.com/user-attachments/assets/03335a6c-bac6-40d6-9b4d-4942729755e4" />
+
+### 2. Configure InfluxDB Integration
+Next, enable InfluxDB metrics reporting so your miner stats appear in Grafana:
+
+- ✅ **Enable** the checkbox
+- **Influx URL**: `http://192.168.1.97` *(or your Docker host IP)*
+- **Influx Port**: `8086`
+- **Token**: from your `.env` file
+- **Bucket**: `nerdq_data` (defined in `.env`)
+- **Org**: `muffin_mining` (defined in `.env`)
+- **Prefix**: A unique identifier for the miner, e.g. `nerdq01`
+
+After saving, **reboot the miner** for changes to take effect.
+<img width="1382" height="1010" alt="image" src="https://github.com/user-attachments/assets/d5db53c7-8fc0-4597-a5ed-5b52dc1d021f" />
+> 📌 Make sure the `Prefix` matches your naming in the Grafana dashboard to correctly group your stats.
 
 
 ## Donations are always welcome
