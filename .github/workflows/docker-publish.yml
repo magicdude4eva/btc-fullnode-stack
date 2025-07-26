@@ -39,6 +39,9 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/btc-${{ matrix.component }}
           tags: |
             latest
+          labels: |
+            org.opencontainers.image.title=btc-${{ matrix.component }}
+            org.opencontainers.image.description=${{ matrix.component }} Docker image for Synology NAS
 
       - name: 🐳 Build and push Docker image
         uses: docker/build-push-action@v5
@@ -50,9 +53,10 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
 
       - name: 📢 Publish README to Docker Hub
-        uses: peter-evans/docker-description@v4
+        uses: peter-evans/dockerhub-description@v4
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           repository: ${{ env.IMAGE_NAMESPACE }}/btc-${{ matrix.component }}
           readme-filepath: ./${{ matrix.component }}/README.md
+          short-description: ${{ steps.meta.outputs.labels['org.opencontainers.image.description'] }}
