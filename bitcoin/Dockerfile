@@ -1,7 +1,9 @@
 FROM debian:bookworm-slim
 
 LABEL maintainer="magicdude4eva" \
-      description="Bitcoin Core Docker image for Synology NAS (solo mining stack)"
+      org.opencontainers.image.authors="magicdude4eva" \
+      org.opencontainers.image.documentation="https://github.com/magicdude4eva/btc-fullnode-stack" \
+      org.opencontainers.image.description="Bitcoin Core full node image for Synology NAS, tailored for local solo mining and full validation"
 
 # Set default Bitcoin Core version (can be overridden at build time)
 ARG BITCOIN_VERSION=29.0
