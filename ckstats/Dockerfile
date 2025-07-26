@@ -3,7 +3,7 @@ FROM node:20-slim
 LABEL maintainer="magicdude4eva" \
       org.opencontainers.image.authors="magicdude4eva" \
       org.opencontainers.image.documentation="https://github.com/magicdude4eva/btc-fullnode-stack" \
-      org.opencontainers.image.description="CKStats - A stats dashboard for CKPool-Solo, with PostgreSQL + Grafana integration"
+      org.opencontainers.image.description="CKStats - A stats dashboard for CKPool-Solo, with PostgreSQL"
 
 # Set environment
 ENV DEBIAN_FRONTEND=noninteractive \
