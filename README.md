@@ -217,6 +217,27 @@ Once the CKStats container is running, you can access the stats dashboard via `h
 
 CKStats updates automatically and gives you complete visibility into the performance of your CKPool solo mining setup.
 
+## 📈 InfluxDB & Grafana
+This dashboard is part of the self-hosted Bitcoin solo mining setup and provides a detailed overview of mining performance and hardware metrics in real-time. The **Grafana Mining Dashboard** connects to an InfluxDB time-series database and visualizes mining-related metrics such as:
+- ✅ Hashrate (1m, 5m, 1h, 1d, 7d)
+- 🧱 Shares (Accepted, Invalid, Duplicate)
+- 🔥 ASIC & VRM temperatures
+- ⚡ Power consumption (W), Voltage (V), Amperage (A)
+- ⏱️ Uptime (current session and total)
+- 🚫 Pool errors
+- 🎯 Best share difficulty
+
+This setup is especially useful for monitoring performance and troubleshooting mining hardware or pool issues over time. Start both InfluxDB and Grafana services using the following command:
+
+```bash
+docker compose --profile bitcoin up -d influxdb grafana
+```
+Both services use credentials defined in your .env file. By default: Username: admin / Password: password
+
+Once running, you can access the Grafana dashboard at: `http://<your-server-ip>:3000`
+<img width="70%" alt="image" src="https://github.com/user-attachments/assets/886e664e-66b9-4144-9439-3c2db82c9e05" />
+
+
 
 ## Donations are always welcome
 
