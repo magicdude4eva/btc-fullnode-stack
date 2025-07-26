@@ -17,13 +17,10 @@ jobs:
       matrix:
         component:
           - bitcoin
-          - ckpool
-          - ckstats
           - bitcoin-explorer
+          - cksolo
+          - ckstats
           - fulcrum
-          - grafana
-          - influxdb
-          - mempool
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
