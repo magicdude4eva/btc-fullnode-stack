@@ -62,4 +62,4 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           repository: ${{ env.IMAGE_NAMESPACE }}/btc-${{ matrix.component }}
           readme-filepath: ./${{ matrix.component }}/README.md
-          short-description: short-description: ${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.description'] }}
+          short-description: ${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.description'] }}
