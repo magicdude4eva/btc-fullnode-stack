@@ -1,5 +1,4 @@
 # 🟧 Synology Bitcoin Full Node Stack
-
 This project sets up a **self-hosted Bitcoin infrastructure** on a **Synology NAS** using Docker. It is tailored for power users who want to:
 
 - Run a **fully validating Bitcoin full node**
