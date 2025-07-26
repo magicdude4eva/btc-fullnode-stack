@@ -268,6 +268,62 @@ After saving, **reboot the miner** for changes to take effect.
 > 📌 Make sure the `Prefix` matches your naming in the Grafana dashboard to correctly group your stats.
 
 
+## ⚡ Fulcrum - Electrum Server for Fast Wallet Access
+Fulcrum is a high-performance Electrum server written in C++, designed to serve light wallets with fast, index-based blockchain access. It's a critical component if you're running interfaces like **Mempool** or **Electrum wallets** and want **fast, efficient querying** of the Bitcoin blockchain without bogging down your full node.
+
+### 🧠 Why Do We Need Fulcrum?
+- **Index-based lookups**: Fulcrum allows wallet clients to quickly check balances, transactions, and history using indexed data.
+- **Mempool UI Backend**: The Mempool interface relies on Fulcrum to fetch live blockchain data and mempool information.
+- **Separation of Concerns**: Keeps your Bitcoin Core node lean while providing fast query capabilities to external tools.
+
+> ❗ **Important:** Only start Fulcrum **after your Bitcoin node is fully synced**. Running Fulcrum during initial sync can lead to database corruption.
+
+### 🧊 Performance and Stability Warning
+Even with NVMe storage, **initialising Fulcrum takes time**. On a Synology DS1019+ with NVMe volumes, the initial index sync **took over a week**.
+- Do **not stop** Fulcrum or the NAS during this phase.
+- Any interruption can **corrupt the index** and require a full rebuild.
+- Consider disabling automatic reboots or DSM updates during initialisation.
+
+### ▶️ Starting Fulcrum
+```bash
+docker compose --profile bitcoin --profile mempool up -d fulcrum
+```
+
+You can monitor its logs with:
+```bash
+docker logs -f mempool-fulcrum
+```
+> ✅ Only proceed to set up Mempool or Electrum clients **after** Fulcrum has successfully completed its initial sync.
+
+At that point, Fulcrum will be fully indexed and ready to serve queries. You should see log lines indicating it's listening for connections and serving indexes, e.g.:
+```
+[info] Now listening on 0.0.0.0:50001 (TCP) and 0.0.0.0:50002 (SSL)
+[info] Indexing complete. Ready to serve clients.
+```
+
+## Bitcoin Explorer
+[Bitcoin RPC Explorer](https://github.com/janoside/btc-rpc-explorer) is a web-based tool for inspecting and querying your local Bitcoin node. It provides an intuitive interface for viewing blocks, transactions, mempool activity, and various statistics pulled via RPC.
+
+This is particularly useful when running your own full node, as it allows you to visualize what your node sees without needing to interact with raw RPC commands.
+
+### Prerequisites
+Before starting Bitcoin Explorer, make sure that:
+- The **Bitcoin Node** is fully synced and running.
+- **Fulcrum** has completed its initial indexing (optional but recommended for completeness).
+
+### Starting the Explorer
+
+Start the container using:
+
+```bash
+docker compose --profile bitcoin up -d bitcoin-explorer
+```
+The explorer will attempt to connect to your Bitcoin node using the credentials from the `.env` file. If everything is set up correctly, you’ll be able to browse blocks, transactions, and node status in real time. Once running, the explorer is accessible via: `http://<your-server-ip>:3002`:
+<img width="1370" height="1130" alt="image" src="https://github.com/user-attachments/assets/be89c6bc-b817-420e-af77-18ce0a7fac05" />
+
+
+
+
 ## Donations are always welcome
 
 [paypal]: https://paypal.me/GerdNaschenweng
