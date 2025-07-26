@@ -1,0 +1,298 @@
+version: "3.9"
+
+networks:
+  bitcoin:
+    name: bitcoin
+    external: true
+    enable_ipv6: false
+
+# ---------------------------------------------------------------------
+# Define Common environment and logging
+x-common-env: &default-env
+  PUID: ${PUID}
+  PGID: ${PGID}
+  TZ: ${TZ}
+
+x-common-logging: &common-logging-restart-unless-stopped
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options:
+      max-file: ${DOCKERLOGGING_MAXFILE}
+      max-size: ${DOCKERLOGGING_MAXSIZE}
+# ---------------------------------------------------------------------
+
+services:
+# MariaDB - MySQL Database
+  mariadb:
+    profiles: ["prod"] # only runs with dev profile
+    container_name: mariadb
+    image: lscr.io/linuxserver/mariadb:latest
+    stop_grace_period: 1m
+    <<: *common-logging-restart-unless-stopped
+    networks:
+      muffinnetwork:
+        aliases:
+          - mariadb
+      bitcoin: {}
+    ports:
+      - 8306:3306
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+    environment:
+      <<: *default-env
+      UMASK: "0622"
+      MARIADB_ROOT_PASSWORD: "mysql"
+      MARIADB_AUTO_UPGRADE: "true"
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/TZ:/etc/timezone:ro
+      - ${DOCKERCONFDIR}/mariadb:/config:rw
+
+######################################################################################################
+# Bitcoin Mining Configuration
+# https://bitcoincore.org/en/releases/
+  bitcoind:
+    profiles: ["bitcoin"]
+    container_name: bitcoin-node
+    image: bitcoin-core:29.0  # use your built image, or build below
+    build:
+      context: ./bitcoin
+      args:
+        BITCOIN_VERSION: "29.0"       # Pass ARG into Dockerfile
+    stop_grace_period: 1m
+    user: "${PUID}:${PGID}"
+    <<: *common-logging-restart-unless-stopped
+    networks:
+      bitcoin:
+        aliases:
+          - bitcoind
+    ports:
+      - "8332:8332"   # RPC
+      - "8333:8333"   # P2P
+      - "28332:28332" # ZMQ hashblock
+      - "28333:28333" # ZMQ rawblock      
+      - "28334:28334" # ZMQ rawtx      
+    environment:
+      <<: *default-env
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ${DOCKERSTORAGEDIR}/bitcoin:/blocks                           # HDD-mounted blocks
+      - ${DOCKERCONFDIR}/bitcoin/bitcoin.conf:/bitcoin/bitcoin.conf   # NVMe-mounted config
+      - ${DOCKERCONFDIR}/bitcoin/bitcoin-data:/bitcoin                # NVMe-mounted chainstate, txindex, config
+
+# Bitcoin RPC Explorer
+# https://github.com/janoside/btc-rpc-explorer
+  bitcoin-explorer:
+    profiles: ["bitcoin"]
+    container_name: bitcoin-explorer
+    image: bitcoin-explorer:1.0  # use your built image, or build below
+    build:
+      context: ./bitcoin-explorer
+    <<: *common-logging-restart-unless-stopped
+    networks:
+      bitcoin:
+        aliases:
+          - bitcoin-explorer
+    ports:
+      - "3002:3002"
+    environment:
+      <<: *default-env
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ${DOCKERCONFDIR}/bitcoin-explorer/bitcoin-explorer.conf:/app/.env:ro
+      
+# CKPool and Proxy
+# https://bitbucket.org/ckolivas/ckpool-solo/src/solobtc/
+  ckpool:
+    profiles: ["bitcoin"]
+    container_name: ckpool
+    image: ckpool:ckpool-solo        # how it will appear locally
+    build:
+      context: ./cksolo
+    depends_on:
+      - bitcoind
+    <<: *common-logging-restart-unless-stopped
+    user: "${PUID}:${PGID}"
+    networks:
+      bitcoin:
+        aliases:
+          - ckpool
+    ports:
+      - "3333:3333"   # stratum
+      - "3334:3334"   # proxy (optional)
+      - "13531:13531" # Optional: CKProxy stats or internal port
+    environment:
+      <<: *default-env
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ${DOCKERCONFDIR}/cksolo/ckpool.conf:/ckpool-conf/ckpool.conf:ro
+      - ${DOCKERCONFDIR}/cksolo/logs:/logs
+
+# CKStats
+# Contains CKStats and PostgresSQL
+# https://github.com/mrv777/ckstats
+  ckstats:
+    profiles: ["bitcoin"]
+    container_name: ckstats
+    image: ckstats-allinone:1.0
+    build:
+      context: ./ckstats
+    depends_on:
+      - ckpool
+    <<: *common-logging-restart-unless-stopped
+    user: "${PUID}:${PGID}"
+    networks:
+      bitcoin:
+        aliases:
+          - ckstats
+    ports:
+      - "4000:3000"   # CKStats website
+    environment:
+      <<: *default-env
+      REBUILD_APP: "0"              # Set to "1" to rebuild the app and run the migration
+      DB_REINITIALISE: "0"          # Set to "1" to delete the entire database and wipe /ckstats/pgdata/*
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ${DOCKERCONFDIR}/cksolo/logs:/logs:ro
+      - ${DOCKERCONFDIR}/ckstats/pgdata:/var/lib/postgresql/data
+      
+# https://github.com/cculianu/Fulcrum            
+  fulcrum:
+    profiles: ["mempool"]
+    container_name: mempool-fulcrum
+    image: fulcrum:1.12.0
+    build:
+      context: ./fulcrum
+      args:
+        FULCRUM_VERSION: "1.12.0"
+    stop_grace_period: 1m
+    depends_on:
+      - bitcoind
+    <<: *common-logging-restart-unless-stopped
+    networks:
+      bitcoin:
+        aliases:
+          - fulcrum
+    environment:
+      <<: *default-env
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ${DOCKERCONFDIR}/fulcrum/data:/fulcrum
+      - ${DOCKERCONFDIR}/fulcrum/fulcrum.conf:/config/fulcrum.conf
+
+
+
+######################################################################################################
+# Mempool Explorer (Monitoring UI for Bitcoin)
+# https://github.com/mempool/mempool/tree/master/docker
+  mempool-web:
+    profiles: ["mempool"]
+    container_name: mempool-web
+    image: mempool/frontend:v3.2.1
+    command: "./wait-for mariadb:3306 --timeout=720 -- nginx -g 'daemon off;'"
+    stop_grace_period: 1m
+    depends_on:
+      - mempool-api
+    <<: *common-logging-restart-unless-stopped
+    networks:
+      bitcoin:
+        aliases:
+          - mempool-web
+    ports:
+      - "9800:8080"  # Web UI accessible at http://localhost:8080
+    environment:
+      <<: *default-env
+      FRONTEND_HTTP_PORT: "8080"
+      BACKEND_MAINNET_HTTP_HOST: "mempool-api"
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ${DOCKERCONFDIR}/mempool/custom-pools:/var/www/mempool/browser/custom-pools:ro
+
+  mempool-api:
+    profiles: ["mempool"]
+    container_name: mempool-api
+    image: mempool/backend:v3.2.1
+    command: "./wait-for-it.sh mariadb:3306 --timeout=720 --strict -- ./start.sh"
+    stop_grace_period: 1m
+    depends_on:
+      - mariadb
+    <<: *common-logging-restart-unless-stopped
+    networks:
+      bitcoin:
+        aliases:
+          - mempool-api
+      muffinnetwork: {}
+    environment:
+      <<: *default-env
+      MEMPOOL_BACKEND: "electrum"
+      ELECTRUM_HOST: "mempool-fulcrum"
+      ELECTRUM_PORT: "50001"
+      ELECTRUM_TLS_ENABLED: "false"
+      CACHE_DIR: "/backend/cache"
+      CORE_RPC_HOST: "bitcoind"
+      CORE_RPC_PORT: "8332"
+      CORE_RPC_USERNAME: "${CORE_RPC_USERNAME}"
+      CORE_RPC_PASSWORD: "${CORE_RPC_PASSWORD}"
+      DATABASE_ENABLED: "true"
+      DATABASE_HOST: "mariadb"
+      DATABASE_DATABASE: "mempool"
+      DATABASE_USERNAME: "mempool"
+      DATABASE_PASSWORD: "mempool"
+      STATISTICS_ENABLED: "true"
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ${DOCKERCONFDIR}/mempool/cache:/backend/cache
+
+######################################################################################################
+# Grafana & Influx DB
+# InfluxDB
+  influxdb:
+    profiles: ["bitcoin"]
+    container_name: influxdb
+    image: influxdb:2.7
+    <<: *common-logging-restart-unless-stopped
+    networks:
+      bitcoin:
+        aliases:
+          - influxdb
+    ports:
+      - 8086:8086
+    environment:
+      <<: *default-env
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: ${INFLUXDB_USERNAME}
+      DOCKER_INFLUXDB_INIT_PASSWORD: ${INFLUXDB_PASSWORD}
+      DOCKER_INFLUXDB_INIT_ORG: ${INFLUXDB_ORG}
+      DOCKER_INFLUXDB_INIT_BUCKET: ${INFLUXDB_BUCKET}
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUXDB_TOKEN}
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/TZ:/etc/timezone:ro
+      - ${DOCKERCONFDIR}/influxdb:/var/lib/influxdb2
+
+  grafana:
+    profiles: ["bitcoin"]
+    container_name: grafana
+    image: grafana/grafana-oss:latest
+    networks:
+      bitcoin:
+        aliases:
+          - grafana
+    depends_on:
+      - influxdb
+    ports:
+      - 3000:3000
+    environment:
+      <<: *default-env
+      GF_INSTALL_PLUGINS: ""
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_INIT_USERNAME}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_INIT_PASSWORD}
+      DOCKER_INFLUXDB_INIT_ORG: ${INFLUXDB_ORG}
+      DOCKER_INFLUXDB_INIT_BUCKET: ${INFLUXDB_BUCKET}
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUXDB_TOKEN}
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/TZ:/etc/timezone:ro
+      - ${DOCKERCONFDIR}/grafana:/var/lib/grafana
+      - ${DOCKERCONFDIR}/grafana/provisioning/:/etc/grafana/provisioning/

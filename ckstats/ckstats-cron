@@ -1,0 +1,4 @@
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+*/1 * * * * cd /app && /usr/local/bin/pnpm seed >> /var/log/cron.log 2>&1
+*/1 * * * * cd /app && /usr/local/bin/pnpm update-users >> /var/log/cron.log 2>&1
+5 */2 * * * cd /app && /usr/local/bin/pnpm cleanup >> /var/log/cron.log 2>&1
