@@ -47,6 +47,18 @@ zmqpubrawblock=tcp://0.0.0.0:28332
 zmqpubrawtx=tcp://0.0.0.0:28333
 ```
 
+### Using rpcauth for remote authentication
+Before setting up remote authentication, you will need to generate the `rpcauth` line that will hold the credentials for the Bitcoind Core daemon. You can use the official `rpcauth.py`⁠ script to generate this line for you, including a random password that is printed to the console:
+
+```bash
+❯ curl -sSL https://raw.githubusercontent.com/bitcoin/bitcoin/master/share/rpcauth/rpcauth.py | python - <username>
+
+String to be appended to bitcoin.conf:
+rpcauth=foo:7d9ba5ae63c3d4dc30583ff4fe65a67e$9e3634e81c11659e3de036d0bf88f89cd169c1039e6e09607562d54765c649cc
+Your password:
+qDDZdeQ5vw9XXFeVnXT4PZ--tGN2xNjjR4nrtyszZx0=
+```
+
 Adjust credentials and ZMQ ports based on your setup.
 
 ## Notes

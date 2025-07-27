@@ -58,4 +58,5 @@ RUN mv supervisord.conf /etc/supervisor/conf.d/supervisord.conf && \
 # Web UI
 EXPOSE 3000
 
+# Start all services via startup script
 CMD ["/app/startup.sh"]
