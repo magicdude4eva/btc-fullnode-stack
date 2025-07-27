@@ -1,4 +1,14 @@
 # CKPool Solo (cksolo)
+![GitHub stars](https://img.shields.io/github/stars/magicdude4eva/btc-fullnode-stack?style=social)
+![GitHub forks](https://img.shields.io/github/forks/magicdude4eva/btc-fullnode-stack?style=social)
+[![Docker Pulls](https://img.shields.io/docker/pulls/magicdude4eva/btc-cksolo)](https://hub.docker.com/r/magicdude4eva/btc-cksolo)
+[![Docker Stars](https://img.shields.io/docker/stars/magicdude4eva/btc-cksolo)](https://hub.docker.com/r/magicdude4eva/btc-cksolo)
+![GitHub issues](https://img.shields.io/github/issues/magicdude4eva/btc-fullnode-stack)
+![GitHub last commit](https://img.shields.io/github/last-commit/magicdude4eva/btc-fullnode-stack)
+![GitHub repo size](https://img.shields.io/github/repo-size/magicdude4eva/btc-fullnode-stack)
+![Maintenance](https://img.shields.io/maintenance/yes/2025)
+[![Contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)](https://github.com/magicdude4eva/btc-fullnode-stack/issues)
+
 This container runs [CKPool Solo](https://bitbucket.org/ckolivas/ckpool-solo/src/solobtc/) — a minimalistic, direct-to-node mining pool. It allows your ASIC miner (e.g. NerdQAxe) to submit work to your local `bitcoind` node without any third-party dependency.
 
 ## Features
