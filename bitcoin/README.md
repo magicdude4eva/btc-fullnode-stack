@@ -1,4 +1,4 @@
-# Bitcoin Core (bitcoind)
+# Bitcoin Core (bitcoind) – Dockerized Full Node
 ![GitHub stars](https://img.shields.io/github/stars/magicdude4eva/btc-fullnode-stack?style=social)
 ![GitHub forks](https://img.shields.io/github/forks/magicdude4eva/btc-fullnode-stack?style=social)
 [![Docker Pulls](https://img.shields.io/docker/pulls/magicdude4eva/btc-bitcoin)](https://hub.docker.com/r/magicdude4eva/btc-bitcoin)
@@ -9,13 +9,20 @@
 ![Maintenance](https://img.shields.io/maintenance/yes/2025)
 [![Contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)](https://github.com/magicdude4eva/btc-fullnode-stack/issues)
 
-This image runs a fully validating Bitcoin Core node (bitcoind), built for use in a local solo-mining stack on a Synology NAS or similar system.
+This Docker image runs a fully validating Bitcoin Core (bitcoind) node, tailored for deployment on Synology NAS devices like the DS1019+ (tested with 16GB RAM and 2TB NVMe) or similar setups. It’s designed for solo-mining stacks but works just as well for full node operators, Electrum server backends, or anyone who wants a stable, secure, and efficient Bitcoin node.
 
 ## Features
 - Based on official Bitcoin Core binaries  
 - Lightweight and optimized for Docker  
-- Exposes RPC and P2P ports  
-- Persistent volume for blockchain data  
+- Optimized for SSD/NVMe use – perfect for fast validation and indexing
+- RPC authentication using rpcuser/rpcpassword or rpcauth
+- ZMQ support for raw block/tx notifications (e.g., for CKPool or Fulcrum)
+- Fast sync ready – ideal for reindexing or txindex-heavy workloads
+- UID/GID support for Synology or non-root environments
+- P2P-ready – fully participates in the Bitcoin network
+- Integrates cleanly with CKPool, Fulcrum, mempool.space, and more
+- Tested on Synology DSM with Docker – stable and production-ready
+- Low power footprint when idle, ideal for always-on nodes
 - Supports solo mining with CKPool or similar  
 
 ## Version
