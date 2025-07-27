@@ -1,4 +1,14 @@
 # Bitcoin Core (bitcoind)
+![GitHub stars](https://img.shields.io/github/stars/magicdude4eva/btc-fullnode-stack?style=social)
+![GitHub forks](https://img.shields.io/github/forks/magicdude4eva/btc-fullnode-stack?style=social)
+[![Docker Pulls](https://img.shields.io/docker/pulls/magicdude4eva/btc-bitcoin)](https://hub.docker.com/r/magicdude4eva/btc-bitcoin)
+[![Docker Stars](https://img.shields.io/docker/stars/magicdude4eva/btc-bitcoin)](https://hub.docker.com/r/magicdude4eva/btc-bitcoin)
+![GitHub issues](https://img.shields.io/github/issues/magicdude4eva/btc-fullnode-stack)
+![GitHub last commit](https://img.shields.io/github/last-commit/magicdude4eva/btc-fullnode-stack)
+![GitHub repo size](https://img.shields.io/github/repo-size/magicdude4eva/btc-fullnode-stack)
+![Maintenance](https://img.shields.io/maintenance/yes/2025)
+[![Contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)](https://github.com/magicdude4eva/btc-fullnode-stack/issues)
+
 This image runs a fully validating Bitcoin Core node (bitcoind), built for use in a local solo-mining stack on a Synology NAS or similar system.
 
 ## Features
