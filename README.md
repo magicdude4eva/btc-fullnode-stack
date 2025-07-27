@@ -1,5 +1,13 @@
-# 🟧 Synology Bitcoin Full Node Stack
-This project sets up a **self-hosted Bitcoin infrastructure** on a **Synology NAS** using Docker. It is tailored for power users who want to:
+# ₿ Synology Bitcoin Node Stack
+![GitHub stars](https://img.shields.io/github/stars/magicdude4eva/btc-fullnode-stack?style=social)
+![GitHub forks](https://img.shields.io/github/forks/magicdude4eva/btc-fullnode-stack?style=social)
+![GitHub issues](https://img.shields.io/github/issues/magicdude4eva/btc-fullnode-stack)
+![GitHub last commit](https://img.shields.io/github/last-commit/magicdude4eva/btc-fullnode-stack)
+![GitHub repo size](https://img.shields.io/github/repo-size/magicdude4eva/btc-fullnode-stack)
+![Maintenance](https://img.shields.io/maintenance/yes/2025)
+[![Contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)](https://github.com/magicdude4eva/btc-fullnode-stack/issues)
+
+This project sets up a **self-hosted Bitcoin infrastructure** on a **Synology NAS** (DS1019+ with 16GB RAM and 2TB NVME) using Docker. It is tailored for power users who want to:
 
 - Run a **fully validating Bitcoin full node**
 - Enable **solo mining** using their own ASIC hardware
