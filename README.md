@@ -13,7 +13,6 @@ This project sets up a **self-hosted Bitcoin infrastructure** on a **Synology NA
 - Enable **solo mining** using their own ASIC hardware
 - Analyze mining statistics and mempool data
 - Operate with **full control**, **no third-party reliance**, and **local-first** architecture
-
 ---
 
 ## ⚙️ What's Included?
