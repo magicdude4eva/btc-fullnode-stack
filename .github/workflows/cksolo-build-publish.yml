@@ -1,0 +1,134 @@
+name: Build, Publish & Release (CKPool Solo)
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "31 5 * * *"  # daily
+
+concurrency:
+  group: cksolo
+  cancel-in-progress: false
+
+env:
+  DOCKERHUB_REPO: magicdude4eva/cksolo
+  BUILD_CONTEXT: .
+  DOCKERFILE_PATH: cksolo/Dockerfile
+  PLATFORM: linux/amd64
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # to create a GitHub Release
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect latest solobtc commit
+        id: latest
+        run: |
+          set -euo pipefail
+          # Get latest commit on branch 'solobtc'
+          fullsha=$(git ls-remote --heads https://bitbucket.org/ckolivas/ckpool-solo.git solobtc | awk '{print $1}')
+          test -n "$fullsha"
+          shortsha=${fullsha:0:12}
+          echo "fullsha=$fullsha"   >> "$GITHUB_OUTPUT"
+          echo "shortsha=$shortsha" >> "$GITHUB_OUTPUT"
+          echo "Latest solobtc: $fullsha ($shortsha)"
+
+      - name: Skip if tag already on Docker Hub
+        id: hubcheck
+        run: |
+          set -euo pipefail
+          tag="solobtc-${{ steps.latest.outputs.shortsha }}"
+          code=$(curl -s -o /dev/null -w "%{http_code}" \
+            "https://hub.docker.com/v2/repositories/${{ env.DOCKERHUB_REPO }}/tags/${tag}")
+          echo "hub_status=$code" >> "$GITHUB_OUTPUT"
+          if [ "$code" = "200" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Tag $tag already exists - skipping."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "Tag $tag not found - will build."
+          fi
+
+      - name: Set up Buildx
+        if: steps.hubcheck.outputs.skip == 'false'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        if: steps.hubcheck.outputs.skip == 'false'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push
+        if: steps.hubcheck.outputs.skip == 'false'
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ env.BUILD_CONTEXT }}
+          file: ${{ env.DOCKERFILE_PATH }}
+          platforms: ${{ env.PLATFORM }}
+          push: true
+          build-args: |
+            CKPOOL_REF=${{ steps.latest.outputs.fullsha }}
+          tags: |
+            ${{ env.DOCKERHUB_REPO }}:latest
+            ${{ env.DOCKERHUB_REPO }}:solobtc-${{ steps.latest.outputs.shortsha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.version=solobtc-${{ steps.latest.outputs.shortsha }}
+            org.opencontainers.image.title=cksolo
+            org.opencontainers.image.description=CKPool Solo - Lightweight stratum server for Bitcoin solo mining
+
+      - name: Update Docker Hub description from ./cksolo/README.md
+        if: steps.hubcheck.outputs.skip == 'false'
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ env.DOCKERHUB_REPO }}
+          readme-filepath: ./cksolo/README.md
+          short-description: CKPool Solo - Lightweight stratum server for Bitcoin solo mining
+
+      - name: Prepare release artifacts
+        if: steps.hubcheck.outputs.skip == 'false'
+        run: |
+          set -euo pipefail
+          echo "${{ steps.latest.outputs.fullsha }}" > upstream-fullsha.txt
+          echo "solobtc-${{ steps.latest.outputs.shortsha }}" > image-tag.txt
+          echo "${{ steps.build.outputs.digest }}" > image-digest.txt
+
+      - name: Create GitHub Release in btc-fullnode-stack
+        if: steps.hubcheck.outputs.skip == 'false'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: cksolo-${{ steps.latest.outputs.shortsha }}
+          name: CKPool Solo (solobtc @ ${{ steps.latest.outputs.shortsha }})
+          target_commitish: ${{ github.sha }}
+          generate_release_notes: true
+          body: |
+            Built from upstream branch **solobtc** at commit:
+            https://bitbucket.org/ckolivas/ckpool-solo/commits/${{ steps.latest.outputs.fullsha }}
+
+            Docker Hub tags:
+            - https://hub.docker.com/r/${{ env.DOCKERHUB_REPO }}/tags?name=solobtc-${{ steps.latest.outputs.shortsha }}
+            - https://hub.docker.com/r/${{ env.DOCKERHUB_REPO }}/tags?name=latest
+
+            Image digest:
+            ```
+            ${{ steps.build.outputs.digest }}
+            ```
+          files: |
+            upstream-fullsha.txt
+            image-tag.txt
+            image-digest.txt
+
+      - name: Summary
+        run: |
+          echo "Upstream full SHA: ${{ steps.latest.outputs.fullsha }}"
+          echo "Short SHA:        ${{ steps.latest.outputs.shortsha }}"
+          echo "Hub status:       ${{ steps.hubcheck.outputs.hub_status }}"
+          echo "Skipped:          ${{ steps.hubcheck.outputs.skip }}"
