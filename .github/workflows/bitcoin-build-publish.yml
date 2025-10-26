@@ -102,6 +102,17 @@ jobs:
           # build-push-action outputs .digest for the manifest list/image
           echo "${{ steps.build.outputs.digest }}" > image-digest.txt
 
+
+      - name: Update Docker Hub description from ./bitcoin/README.md
+        if: steps.hubcheck.outputs.skip == 'false'
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ env.DOCKERHUB_REPO }}
+          readme-filepath: ./bitcoin/README.md
+          short-description: Bitcoin Core full node image for Synology NAS, tailored for local solo mining and full validation
+          
       - name: Create GitHub Release
         if: steps.hubcheck.outputs.skip == 'false'
         uses: softprops/action-gh-release@v2
