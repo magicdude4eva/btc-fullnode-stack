@@ -1,0 +1,182 @@
+name: Build, Publish & Release (CKStats)
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "37 5 * * *"  # daily
+
+concurrency:
+  group: btc-ckstats
+  cancel-in-progress: false
+
+env:
+  DOCKERHUB_REPO: magicdude4eva/btc-ckstats
+  BUILD_CONTEXT: .
+  DOCKERFILE_PATH: ckstats/Dockerfile
+  PLATFORM: linux/amd64
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # for creating GitHub Releases
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect latest upstream commit (mrv777/ckstats@main)
+        id: latest
+        run: |
+          set -euo pipefail
+          fullsha=$(git ls-remote https://github.com/mrv777/ckstats.git refs/heads/main | awk '{print $1}')
+          test -n "$fullsha"
+          shortsha=${fullsha:0:12}
+          echo "fullsha=$fullsha"   >> "$GITHUB_OUTPUT"
+          echo "shortsha=$shortsha" >> "$GITHUB_OUTPUT"
+          echo "Latest main: $fullsha ($shortsha)"
+
+      - name: Skip if tag already on Docker Hub
+        id: hubcheck
+        run: |
+          set -euo pipefail
+          tag="main-${{ steps.latest.outputs.shortsha }}"
+          code=$(curl -s -o /dev/null -w "%{http_code}" \
+            "https://hub.docker.com/v2/repositories/${{ env.DOCKERHUB_REPO }}/tags/${tag}")
+          echo "hub_status=$code" >> "$GITHUB_OUTPUT"
+          if [ "$code" = "200" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Tag $tag already exists - skipping."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "Tag $tag not found - will build."
+          fi
+
+      - name: Set up Buildx
+        if: steps.hubcheck.outputs.skip == 'false'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        if: steps.hubcheck.outputs.skip == 'false'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push
+        if: steps.hubcheck.outputs.skip == 'false'
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ env.BUILD_CONTEXT }}
+          file: ${{ env.DOCKERFILE_PATH }}
+          platforms: ${{ env.PLATFORM }}
+          push: true
+          build-args: |
+            CKSTATS_REF=${{ steps.latest.outputs.fullsha }}
+            LOG_PATH=/var/log/ckstats.log
+          tags: |
+            ${{ env.DOCKERHUB_REPO }}:latest
+            ${{ env.DOCKERHUB_REPO }}:main-${{ steps.latest.outputs.shortsha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.version=main-${{ steps.latest.outputs.shortsha }}
+            org.opencontainers.image.title=btc-ckstats
+            org.opencontainers.image.description=CKStats - dashboard for CKPool-Solo, with PostgreSQL
+
+      - name: Update Docker Hub description from ./ckstats/README.md
+        if: steps.hubcheck.outputs.skip == 'false'
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ env.DOCKERHUB_REPO }}
+          readme-filepath: ./ckstats/README.md
+          short-description: CKStats - A stats dashboard for CKPool-Solo, with PostgreSQL
+
+      - name: Prepare release artifacts
+        if: steps.hubcheck.outputs.skip == 'false'
+        run: |
+          set -euo pipefail
+          echo "${{ steps.latest.outputs.fullsha }}" > upstream-fullsha.txt
+          echo "main-${{ steps.latest.outputs.shortsha }}" > image-tag.txt
+          echo "${{ steps.build.outputs.digest }}" > image-digest.txt
+
+      - name: Build commit changelog since last ckstats release
+        if: steps.hubcheck.outputs.skip == 'false'
+        id: changelog
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          new_full='${{ steps.latest.outputs.fullsha }}'
+          mkdir -p _artifacts
+
+          # Find last ckstats release in this repo
+          prev_tag=$(gh release list --limit 200 --json tagName,isDraft,isPrerelease,publishedAt \
+            --jq '[.[] | select(.tagName | startswith("ckstats-")) | select(.isDraft==false and .isPrerelease==false)] 
+                  | sort_by(.publishedAt) | last // empty | .tagName')
+          if [ -n "${prev_tag:-}" ]; then
+            echo "Prev release: $prev_tag"
+            gh release download "$prev_tag" -p upstream-fullsha.txt -O _artifacts/prev-upstream-fullsha.txt
+            prev_full=$(tr -d '\r\n' < _artifacts/prev-upstream-fullsha.txt)
+          else
+            echo "No previous ckstats release found."
+            prev_full=""
+          fi
+
+          echo "# Changes in ckstats (upstream main)" > _artifacts/release-body.md
+          echo "" >> _artifacts/release-body.md
+          echo "**Upstream commit:** \`${new_full}\`" >> _artifacts/release-body.md
+          echo "" >> _artifacts/release-body.md
+
+          git clone --filter=blob:none https://github.com/mrv777/ckstats.git upstream
+          cd upstream
+          git checkout main
+          git fetch origin "$new_full" --depth=1 || true
+          if [ -n "$prev_full" ]; then
+            git fetch origin "$prev_full" --depth=1 || true
+            echo "## Commits since last release" >> ../_artifacts/release-body.md
+            echo "" >> ../_artifacts/release-body.md
+            if git merge-base --is-ancestor "$prev_full" "$new_full"; then
+              git log --no-merges --pretty=format:'- %h %s (%an)' "$prev_full..$new_full" >> ../_artifacts/release-body.md
+            else
+              echo "_Note: previous SHA is not an ancestor of new SHA; showing recent log of main._" >> ../_artifacts/release-body.md
+              git log --no-merges --pretty=format:'- %h %s (%an)' -n 50 >> ../_artifacts/release-body.md
+            fi
+          else
+            echo "_First release detected. Commit list not available._" >> ../_artifacts/release-body.md
+          fi
+          cd ..
+
+          {
+            echo ""
+            echo "## Docker Hub"
+            echo "- https://hub.docker.com/r/${{ env.DOCKERHUB_REPO }}/tags?name=main-${{ steps.latest.outputs.shortsha }}"
+            echo "- https://hub.docker.com/r/${{ env.DOCKERHUB_REPO }}/tags?name=latest"
+            echo ""
+            echo "## Image digest"
+            echo '```'
+            echo "${{ steps.build.outputs.digest }}"
+            echo '```'
+          } >> _artifacts/release-body.md
+
+      - name: Create GitHub Release in btc-fullnode-stack
+        if: steps.hubcheck.outputs.skip == 'false'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ckstats-${{ steps.latest.outputs.shortsha }}
+          name: CKStats (main @ ${{ steps.latest.outputs.shortsha }})
+          target_commitish: ${{ github.sha }}
+          generate_release_notes: false
+          body_path: _artifacts/release-body.md
+          files: |
+            upstream-fullsha.txt
+            image-tag.txt
+            image-digest.txt
+
+      - name: Summary
+        run: |
+          echo "Upstream full SHA: ${{ steps.latest.outputs.fullsha }}"
+          echo "Short SHA:        ${{ steps.latest.outputs.shortsha }}"
+          echo "Hub status:       ${{ steps.hubcheck.outputs.hub_status }}"
+          echo "Skipped:          ${{ steps.hubcheck.outputs.skip }}"
