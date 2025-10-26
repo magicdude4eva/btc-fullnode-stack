@@ -55,11 +55,11 @@ services:
   bitcoind:
     profiles: ["bitcoin"]
     container_name: bitcoin-node
-    image: bitcoin-core:29.0  # use your built image, or build below
+    image: bitcoin-core:30.0  # use your built image, or build below
     build:
       context: ./bitcoin
       args:
-        BITCOIN_VERSION: "29.0"       # Pass ARG into Dockerfile
+        BITCOIN_VERSION: "30.0"       # Pass ARG into Dockerfile
     stop_grace_period: 1m
     user: "${PUID}:${PGID}"
     <<: *common-logging-restart-unless-stopped
