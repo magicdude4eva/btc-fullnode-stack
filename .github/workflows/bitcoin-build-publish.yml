@@ -11,7 +11,7 @@ concurrency:
 
 env:
   DOCKERHUB_REPO: magicdude4eva/btc-bitcoin
-  DOCKER_CONTEXT: .
+  BUILD_CONTEXT: .
   DOCKERFILE_PATH: bitcoin/Dockerfile
   PLATFORM: linux/amd64
 
@@ -75,7 +75,7 @@ jobs:
         id: build
         uses: docker/build-push-action@v6
         with:
-          context: ${{ env.DOCKER_CONTEXT }}
+          context: ${{ env.BUILD_CONTEXT }}
           file: ${{ env.DOCKERFILE_PATH }}
           platforms: ${{ env.PLATFORM }}
           push: true
