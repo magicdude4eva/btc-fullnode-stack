@@ -11,7 +11,7 @@ concurrency:
 
 env:
   DOCKERHUB_REPO: magicdude4eva/cksolo
-  BUILD_CONTEXT: .
+  BUILD_CONTEXT: cksolo
   DOCKERFILE_PATH: cksolo/Dockerfile
   PLATFORM: linux/amd64
 

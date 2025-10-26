@@ -11,7 +11,7 @@ concurrency:
 
 env:
   DOCKERHUB_REPO: magicdude4eva/btc-ckstats
-  BUILD_CONTEXT: .
+  BUILD_CONTEXT: ckstats
   DOCKERFILE_PATH: ckstats/Dockerfile
   PLATFORM: linux/amd64
 

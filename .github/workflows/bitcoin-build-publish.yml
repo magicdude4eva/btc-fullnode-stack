@@ -11,7 +11,7 @@ concurrency:
 
 env:
   DOCKERHUB_REPO: magicdude4eva/btc-bitcoin
-  BUILD_CONTEXT: .
+  BUILD_CONTEXT: bitcoin
   DOCKERFILE_PATH: bitcoin/Dockerfile
   PLATFORM: linux/amd64
 
