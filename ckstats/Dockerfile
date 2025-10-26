@@ -19,8 +19,8 @@ ENV CKSTATS_REF=${CKSTATS_REF}
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
       git curl cron supervisor ca-certificates postgresql postgresql-contrib && \
-    curl -fsSL https://get.pnpm.io/install.sh | bash - && \
-    ln -s ${PNPM_HOME}/pnpm /usr/local/bin/pnpm && \
+    corepack enable && \
+    corepack prepare pnpm@latest --activate && \
     apt-get clean && rm -rf /var/lib/apt/lists/* && update-ca-certificates --fresh
 
 VOLUME ["/var/lib/postgresql/data"]
