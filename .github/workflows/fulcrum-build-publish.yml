@@ -1,0 +1,137 @@
+name: Build, Publish & Release (Fulcrum)
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "43 5 * * *"  # daily
+
+concurrency:
+  group: btc-fulcrum
+  cancel-in-progress: false
+
+env:
+  DOCKERHUB_REPO: magicdude4eva/btc-fulcrum
+  BUILD_CONTEXT: fulcrum
+  DOCKERFILE_PATH: fulcrum/Dockerfile
+  PLATFORM: linux/amd64
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write    # to create GitHub releases
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect latest Fulcrum version
+        id: latest
+        run: |
+          set -euo pipefail
+          # Use GitHub API to get the latest release tag (e.g. "v1.12.0")
+          tag=$(curl -fsSL https://api.github.com/repos/cculianu/Fulcrum/releases/latest \
+              | grep -Eo '"tag_name":\s*"[^"]+"' | sed -E 's/.*"tag_name":\s*"([^"]+)".*/\1/')
+          test -n "$tag"
+          # Strip a leading "v" for Dockerfile's FULCRUM_VERSION arg
+          ver=$(printf "%s" "$tag" | sed -E 's/^v//')
+          echo "tag=$tag"   >> "$GITHUB_OUTPUT"
+          echo "version=$ver" >> "$GITHUB_OUTPUT"
+          echo "Latest Fulcrum: tag=$tag -> version=$ver"
+
+      - name: Skip if tag already on Docker Hub
+        id: hubcheck
+        run: |
+          set -euo pipefail
+          ver='${{ steps.latest.outputs.version }}'
+          code=$(curl -s -o /dev/null -w "%{http_code}" \
+            "https://hub.docker.com/v2/repositories/${{ env.DOCKERHUB_REPO }}/tags/${ver}")
+          echo "hub_status=$code" >> "$GITHUB_OUTPUT"
+          if [ "$code" = "200" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Tag $ver already exists - skipping."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "Tag $ver not found - will build."
+          fi
+
+      - name: Set up Buildx
+        if: steps.hubcheck.outputs.skip == 'false'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        if: steps.hubcheck.outputs.skip == 'false'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push
+        if: steps.hubcheck.outputs.skip == 'false'
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ env.BUILD_CONTEXT }}
+          file: ${{ env.DOCKERFILE_PATH }}
+          platforms: ${{ env.PLATFORM }}
+          push: true
+          build-args: |
+            FULCRUM_VERSION=${{ steps.latest.outputs.version }}
+          tags: |
+            ${{ env.DOCKERHUB_REPO }}:latest
+            ${{ env.DOCKERHUB_REPO }}:${{ steps.latest.outputs.version }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.version=${{ steps.latest.outputs.version }}
+            org.opencontainers.image.title=btc-fulcrum
+            org.opencontainers.image.description=Fulcrum - Electrum-style server for Bitcoin/BCH
+
+      - name: Update Docker Hub description from ./fulcrum/README.md
+        if: steps.hubcheck.outputs.skip == 'false'
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ env.DOCKERHUB_REPO }}
+          readme-filepath: ./fulcrum/README.md
+          short-description: Fulcrum - Electrum-style server for Bitcoin/BCH
+
+      - name: Prepare release artifacts
+        if: steps.hubcheck.outputs.skip == 'false'
+        run: |
+          set -euo pipefail
+          echo "${{ steps.latest.outputs.version }}" > fulcrum-version.txt
+          echo "${{ steps.latest.outputs.tag }}" > upstream-tag.txt
+          echo "${{ steps.build.outputs.digest }}" > image-digest.txt
+
+      - name: Create GitHub Release in btc-fullnode-stack
+        if: steps.hubcheck.outputs.skip == 'false'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: fulcrum-${{ steps.latest.outputs.version }}
+          name: Fulcrum ${{ steps.latest.outputs.version }}
+          target_commitish: ${{ github.sha }}
+          generate_release_notes: true
+          body: |
+            Fulcrum **${{ steps.latest.outputs.version }}** image published.
+
+            Upstream: ${{ steps.latest.outputs.tag }}
+
+            Docker Hub:
+            - https://hub.docker.com/r/${{ env.DOCKERHUB_REPO }}/tags?name=${{ steps.latest.outputs.version }}
+            - https://hub.docker.com/r/${{ env.DOCKERHUB_REPO }}/tags?name=latest
+
+            Image digest:
+            ```
+            ${{ steps.build.outputs.digest }}
+            ```
+          files: |
+            fulcrum-version.txt
+            upstream-tag.txt
+            image-digest.txt
+
+      - name: Summary
+        run: |
+          echo "Fulcrum version:  ${{ steps.latest.outputs.version }}"
+          echo "Upstream tag:     ${{ steps.latest.outputs.tag }}"
+          echo "Hub status:       ${{ steps.hubcheck.outputs.hub_status }}"
+          echo "Skipped:          ${{ steps.hubcheck.outputs.skip }}"
