@@ -29,7 +29,7 @@ jobs:
         run: |
           set -euo pipefail
           # Get latest commit on branch 'solobtc'
-          fullsha=$(git ls-remote --heads https://bitbucket.org/ckolivas/ckpool-solo.git solobtc | awk '{print $1}')
+          fullsha=$(git ls-remote --heads https://bitbucket.org/ckolivas/ckpool.git master | awk '{print $1}')
           test -n "$fullsha"
           shortsha=${fullsha:0:12}
           echo "fullsha=$fullsha"   >> "$GITHUB_OUTPUT"
