@@ -133,11 +133,11 @@ jobs:
 
           if [ -n "$prev_full" ]; then
             echo "Comparing range: $prev_full..$new_full"
-            git clone --filter=blob:none https://bitbucket.org/ckolivas/ckpool-solo.git upstream
+            git clone --filter=blob:none https://bitbucket.org/ckolivas/ckpool.git upstream
             cd upstream
             git checkout solobtc
             # Ensure both commits exist locally
-            git fetch origin "$prev_full" "$new_full" --depth=1 || git fetch origin solobtc --unshallow || true
+            git fetch origin "$prev_full" "$new_full" --depth=1 || git fetch origin master --unshallow || true
             echo "" >> ../_artifacts/release-body.md
             echo "## Commits since last release" >> ../_artifacts/release-body.md
             echo "" >> ../_artifacts/release-body.md
