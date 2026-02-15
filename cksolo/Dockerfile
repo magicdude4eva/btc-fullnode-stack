@@ -25,7 +25,7 @@ RUN apt-get update && \
 WORKDIR ${CKPOOL_DIR}
 
 # Clone & build (checkout commit if provided, else branch)
-RUN git clone --depth 1 -b solobtc https://bitbucket.org/ckolivas/ckpool-solo.git . && \
+RUN git clone --depth 1 -b master https://bitbucket.org/ckolivas/ckpool.git . && \
     if [ -n "$CKPOOL_REF" ]; then \
       git fetch origin "$CKPOOL_REF" --depth 1 && git checkout --detach "$CKPOOL_REF"; \
     fi && \
