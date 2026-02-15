@@ -24,17 +24,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Detect latest solobtc commit
+      - name: Detect latest master commit
         id: latest
         run: |
           set -euo pipefail
-          # Get latest commit on branch 'solobtc'
+          # Get latest commit on branch 'master'
           fullsha=$(git ls-remote --heads https://bitbucket.org/ckolivas/ckpool.git master | awk '{print $1}')
           test -n "$fullsha"
           shortsha=${fullsha:0:12}
           echo "fullsha=$fullsha"   >> "$GITHUB_OUTPUT"
           echo "shortsha=$shortsha" >> "$GITHUB_OUTPUT"
-          echo "Latest solobtc: $fullsha ($shortsha)"
+          echo "Latest master: $fullsha ($shortsha)"
 
       - name: Skip if tag already on Docker Hub
         id: hubcheck
@@ -114,7 +114,7 @@ jobs:
 
           # Find previous cksolo release in this repo (if any) and get its upstream SHA
           prev_tag=$(gh release list --limit 200 --json tagName,isDraft,isPrerelease,publishedAt \
-            --jq '[.[] | select(.tagName | startswith("cksolo-")) | select(.isDraft==false and .isPrerelease==false)] 
+            --jq '[.[] | select(.tagName | startswith("cksolo-")) | select(.isDraft==false and .isPrerelease==false)] \
                   | sort_by(.publishedAt) | last // empty | .tagName')
           if [ -n "${prev_tag:-}" ]; then
             echo "Prev release: $prev_tag"
@@ -126,7 +126,7 @@ jobs:
           fi
 
           # Build commit list
-          echo "# Changes in ckpool-solo (solobtc)" > _artifacts/release-body.md
+          echo "# Changes in ckpool (master)" > _artifacts/release-body.md
           echo "" >> _artifacts/release-body.md
           echo "**Upstream commit:** \`${new_full}\`" >> _artifacts/release-body.md
           echo "" >> _artifacts/release-body.md
@@ -135,7 +135,7 @@ jobs:
             echo "Comparing range: $prev_full..$new_full"
             git clone --filter=blob:none https://bitbucket.org/ckolivas/ckpool.git upstream
             cd upstream
-            git checkout solobtc
+            git checkout master
             # Ensure both commits exist locally
             git fetch origin "$prev_full" "$new_full" --depth=1 || git fetch origin master --unshallow || true
             echo "" >> ../_artifacts/release-body.md
@@ -145,7 +145,7 @@ jobs:
             if git merge-base --is-ancestor "$prev_full" "$new_full"; then
               git log --no-merges --pretty=format:'- %h %s (%an)' "$prev_full..$new_full" >> ../_artifacts/release-body.md
             else
-              echo "_Note: previous SHA is not an ancestor of the new SHA; showing short log of solobtc branch._" >> ../_artifacts/release-body.md
+              echo "_Note: previous SHA is not an ancestor of the new SHA; showing short log of master branch._" >> ../_artifacts/release-body.md
               git log --no-merges --pretty=format:'- %h %s (%an)' -n 50 >> ../_artifacts/release-body.md
             fi
             cd ..
@@ -160,7 +160,7 @@ jobs:
           echo "" >> _artifacts/release-body.md
           echo "## Image digest" >> _artifacts/release-body.md
           echo '```' >> _artifacts/release-body.md
-          echo "${{ steps.build.outputs.digest }}" >> _artifacts/release-body.md
+          echo "\${{ steps.build.outputs.digest }}" >> _artifacts/release-body.md
           echo '```' >> _artifacts/release-body.md
 
       - name: Create GitHub Release in btc-fullnode-stack
