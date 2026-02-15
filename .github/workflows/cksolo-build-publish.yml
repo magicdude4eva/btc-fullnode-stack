@@ -113,9 +113,7 @@ jobs:
           mkdir -p _artifacts
 
           # Find previous cksolo release in this repo (if any) and get its upstream SHA
-          prev_tag=$(gh release list --limit 200 --json tagName,isDraft,isPrerelease,publishedAt \
-            --jq '[.[] | select(.tagName | startswith("cksolo-")) | select(.isDraft==false and .isPrerelease==false)] \
-                  | sort_by(.publishedAt) | last // empty | .tagName')
+          prev_tag=$(gh release list --limit 200 --json tagName,isDraft,isPrerelease,publishedAt --jq '[.[] | select(.tagName | startswith("cksolo-")) | select(.isDraft==false and .isPrerelease==false)] | sort_by(.publishedAt) | last // empty | .tagName')
           if [ -n "${prev_tag:-}" ]; then
             echo "Prev release: $prev_tag"
             gh release download "$prev_tag" -p upstream-fullsha.txt -O _artifacts/prev-upstream-fullsha.txt
