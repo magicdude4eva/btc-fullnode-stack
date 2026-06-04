@@ -20,7 +20,7 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
       git curl cron supervisor ca-certificates postgresql postgresql-contrib && \
     corepack enable && \
-    corepack prepare pnpm@8 --activate && \
+    corepack prepare pnpm@10 --activate && \
     apt-get clean && rm -rf /var/lib/apt/lists/* && update-ca-certificates --fresh
 
 VOLUME ["/var/lib/postgresql/data"]
