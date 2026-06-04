@@ -1,6 +1,6 @@
 # ckstats/Dockerfile
 
-FROM node:20-slim
+FROM node:22-slim
 
 LABEL maintainer="magicdude4eva" \
       org.opencontainers.image.authors="magicdude4eva" \
@@ -20,7 +20,7 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
       git curl cron supervisor ca-certificates postgresql postgresql-contrib && \
     corepack enable && \
-    corepack prepare pnpm@latest --activate && \
+    corepack prepare pnpm@8 --activate && \
     apt-get clean && rm -rf /var/lib/apt/lists/* && update-ca-certificates --fresh
 
 VOLUME ["/var/lib/postgresql/data"]
