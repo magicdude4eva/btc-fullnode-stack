@@ -22,14 +22,17 @@ jobs:
       contents: write   # needed to create GitHub Release
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Detect latest explorer release tag
         id: latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          tag=$(curl -fsSL https://api.github.com/repos/janoside/btc-rpc-explorer/releases/latest \
-              | grep -Eo '"tag_name":\s*"[^"]+"' | sed -E 's/.*"tag_name":\s*"([^"]+)".*/\1/' )
+          tag=$(curl -fsSL --retry 5 --retry-all-errors --retry-delay 10 \
+              -H "Authorization: Bearer ${GH_TOKEN}" -H "Accept: application/vnd.github+json" \
+              https://api.github.com/repos/janoside/btc-rpc-explorer/releases/latest | jq -r '.tag_name // empty')
           test -n "$tag"
           # derive a clean display name without leading v
           name=$(printf "%s" "$tag" | sed -E 's/^v//')
@@ -42,7 +45,7 @@ jobs:
         run: |
           set -euo pipefail
           tag='${{ steps.latest.outputs.tag }}'
-          code=$(curl -s -o /dev/null -w "%{http_code}" \
+          code=$(curl -s --retry 5 --retry-delay 10 -o /dev/null -w "%{http_code}" \
             "https://hub.docker.com/v2/repositories/${{ env.DOCKERHUB_REPO }}/tags/${tag}")
           echo "hub_status=$code" >> "$GITHUB_OUTPUT"
           if [ "$code" = "200" ]; then
@@ -55,11 +58,11 @@ jobs:
 
       - name: Set up Buildx
         if: steps.hubcheck.outputs.skip == 'false'
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Log in to Docker Hub
         if: steps.hubcheck.outputs.skip == 'false'
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -67,7 +70,7 @@ jobs:
       - name: Build and push
         if: steps.hubcheck.outputs.skip == 'false'
         id: build
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ${{ env.BUILD_CONTEXT }}
           file: ${{ env.DOCKERFILE_PATH }}
@@ -86,7 +89,7 @@ jobs:
 
       - name: Update Docker Hub description from ./bitcoin-explorer/README.md
         if: steps.hubcheck.outputs.skip == 'false'
-        uses: peter-evans/dockerhub-description@v4
+        uses: peter-evans/dockerhub-description@v5
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -103,7 +106,7 @@ jobs:
 
       - name: Create GitHub Release in btc-fullnode-stack
         if: steps.hubcheck.outputs.skip == 'false'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: explorer-${{ steps.latest.outputs.tag }}
           name: Bitcoin RPC Explorer ${{ steps.latest.outputs.name }}
